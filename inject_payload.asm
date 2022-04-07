@@ -15,8 +15,8 @@ PUBLIC	?get_module_by_name@@YAPEAXPEA_W@Z		; get_module_by_name
 PUBLIC	?get_func_by_name@@YAPEAXPEAXPEAD@Z		; get_func_by_name
 PUBLIC	main
 
+; Function compile flags: /Odtp
 _TEXT	SEGMENT
-
 AlignRSP PROC
     push rsi ; Preserve RSI since we're stomping on it
     mov rsi, rsp ; Save the value of RSP so it can be restored
@@ -27,7 +27,6 @@ AlignRSP PROC
     pop rsi ; Restore RSI
     ret ; Return to caller
 AlignRSP ENDP
-
 user32_dll_name$ = 32
 message_box_name$ = 48
 load_lib_name$ = 64
@@ -35,18 +34,18 @@ get_proc_name$ = 80
 msg_title$ = 96
 kernel32_dll_name$ = 112
 msg_content$ = 144
-base$ = 176
-load_lib$ = 184
-get_proc$ = 192
-_MessageBoxW$ = 200
-_LoadLibraryA$ = 208
-u32_dll$ = 216
-_GetProcAddress$ = 224
+base$ = 200
+load_lib$ = 208
+get_proc$ = 216
+_MessageBoxW$ = 224
+_LoadLibraryA$ = 232
+u32_dll$ = 240
+_GetProcAddress$ = 248
 main	PROC
 ; File C:\Users\ADmin\Desktop\TestPlace\inject_payload.cpp
 ; Line 14
 $LN7:
-	sub	rsp, 248				; 000000f8H
+	sub	rsp, 264				; 00000108H
 ; Line 16
 	mov	eax, 107				; 0000006bH
 	mov	WORD PTR kernel32_dll_name$[rsp], ax
@@ -130,32 +129,62 @@ $LN7:
 	mov	BYTE PTR message_box_name$[rsp+10], 87	; 00000057H
 	mov	BYTE PTR message_box_name$[rsp+11], 0
 ; Line 23
-	mov	eax, 72					; 00000048H
+	mov	eax, 49					; 00000031H
 	mov	WORD PTR msg_content$[rsp], ax
-	mov	eax, 101				; 00000065H
+	mov	eax, 57					; 00000039H
 	mov	WORD PTR msg_content$[rsp+2], ax
-	mov	eax, 108				; 0000006cH
+	mov	eax, 53					; 00000035H
 	mov	WORD PTR msg_content$[rsp+4], ax
-	mov	eax, 108				; 0000006cH
+	mov	eax, 50					; 00000032H
 	mov	WORD PTR msg_content$[rsp+6], ax
-	mov	eax, 111				; 0000006fH
+	mov	eax, 48					; 00000030H
 	mov	WORD PTR msg_content$[rsp+8], ax
-	mov	eax, 32					; 00000020H
+	mov	eax, 54					; 00000036H
 	mov	WORD PTR msg_content$[rsp+10], ax
-	mov	eax, 87					; 00000057H
+	mov	eax, 51					; 00000033H
 	mov	WORD PTR msg_content$[rsp+12], ax
-	mov	eax, 111				; 0000006fH
+	mov	eax, 57					; 00000039H
 	mov	WORD PTR msg_content$[rsp+14], ax
-	mov	eax, 114				; 00000072H
+	mov	eax, 32					; 00000020H
 	mov	WORD PTR msg_content$[rsp+16], ax
-	mov	eax, 108				; 0000006cH
+	mov	eax, 49					; 00000031H
 	mov	WORD PTR msg_content$[rsp+18], ax
-	mov	eax, 100				; 00000064H
+	mov	eax, 57					; 00000039H
 	mov	WORD PTR msg_content$[rsp+20], ax
-	mov	eax, 33					; 00000021H
+	mov	eax, 53					; 00000035H
 	mov	WORD PTR msg_content$[rsp+22], ax
-	xor	eax, eax
+	mov	eax, 50					; 00000032H
 	mov	WORD PTR msg_content$[rsp+24], ax
+	mov	eax, 48					; 00000030H
+	mov	WORD PTR msg_content$[rsp+26], ax
+	mov	eax, 54					; 00000036H
+	mov	WORD PTR msg_content$[rsp+28], ax
+	mov	eax, 48					; 00000030H
+	mov	WORD PTR msg_content$[rsp+30], ax
+	mov	eax, 52					; 00000034H
+	mov	WORD PTR msg_content$[rsp+32], ax
+	mov	eax, 32					; 00000020H
+	mov	WORD PTR msg_content$[rsp+34], ax
+	mov	eax, 49					; 00000031H
+	mov	WORD PTR msg_content$[rsp+36], ax
+	mov	eax, 57					; 00000039H
+	mov	WORD PTR msg_content$[rsp+38], ax
+	mov	eax, 53					; 00000035H
+	mov	WORD PTR msg_content$[rsp+40], ax
+	mov	eax, 50					; 00000032H
+	mov	WORD PTR msg_content$[rsp+42], ax
+	mov	eax, 48					; 00000030H
+	mov	WORD PTR msg_content$[rsp+44], ax
+	mov	eax, 54					; 00000036H
+	mov	WORD PTR msg_content$[rsp+46], ax
+	mov	eax, 49					; 00000031H
+	mov	WORD PTR msg_content$[rsp+48], ax
+	mov	eax, 55					; 00000037H
+	mov	WORD PTR msg_content$[rsp+50], ax
+	mov	eax, 32					; 00000020H
+	mov	WORD PTR msg_content$[rsp+52], ax
+	xor	eax, eax
+	mov	WORD PTR msg_content$[rsp+54], ax
 ; Line 24
 	mov	eax, 68					; 00000044H
 	mov	WORD PTR msg_title$[rsp], ax
@@ -235,7 +264,7 @@ $LN5@main:
 	xor	eax, eax
 $LN1@main:
 ; Line 70
-	add	rsp, 248				; 000000f8H
+	add	rsp, 264				; 00000108H
 	ret	0
 main	ENDP
 _TEXT	ENDS
