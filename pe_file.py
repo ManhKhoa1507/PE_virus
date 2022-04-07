@@ -47,9 +47,9 @@ def create_shell_code(virtual_address_of_caption, virtual_address_of_text, jump_
     shell_code += b'\xFF\x15'
     shell_code += struct.pack("I", address_of_message_box_w)
     shell_code += b'\xE9' + struct.pack("I", jump_address)
-    shell_code += b'\x00' * 30
+    shell_code += b'\x00' * 23
     shell_code += b'\x49\x00\x6e\x00\x66\x00\x6f\x00'
-    shell_code += b'\x00' * 33  
+    shell_code += b'\x00' * 40
     shell_code += b'\x49\x00\x6E\x00\x6A\x00\x65\x00\x63\x00\x74\x00\x65\x00\x64\x00\x20\x00\x62\x00\x79\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x33\x00\x39\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x30\x00\x34\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x31\x00\x37'
 
     return shell_code
@@ -108,9 +108,10 @@ def injected_shell_code(input, output):
 
     # Calc old entry point
     entry_points_fix = new_entry_point - image_base
-    jump_address = (entry_point_old + image_base - 5 -
-                    new_entry_point - 45) & 0xffffffff
-
+    jump_address = ((entry_point_old + image_base) - 5 -
+                    (new_entry_point + 0x14)) & 0xffffffff
+    print("jump entry: ", hex(jump_address))
+    
     # Get the address of message box w
     address_of_message_box_w = get_message_box_w(pe)
 
