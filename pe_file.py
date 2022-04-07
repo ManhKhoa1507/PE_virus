@@ -6,6 +6,7 @@ import struct
 
 
 def get_message_box_w():
+    # Get the MessageBoxW
     address_of_message_box_w = None
     for entry in pe.DIRECTORY_ENTRY_IMPORT:
         dll_name = entry.dll.decode('utf-8')
@@ -17,6 +18,7 @@ def get_message_box_w():
     if not address_of_message_box_w:
         print("[-] PE file not imported MessageBoxW")
         return False
+    
     print("Address of MessageBoxW: ", hex(address_of_message_box_w))
     return address_of_message_box_w
 
@@ -58,6 +60,7 @@ def create_shell_code(virtual_address_of_caption, virtual_address_of_text, addre
     shell_code += b'\x49\x00\x6e\x00\x66\x00\x6f\x00'
     shell_code += b'\x00' * 24
     shell_code += b'\x49\x00\x6E\x00\x6A\x00\x65\x00\x63\x00\x74\x00\x65\x00\x64\x00\x20\x00\x62\x00\x79\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x33\x00\x39\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x30\x00\x34\x00\x20\x00\x31\x00\x39\x00\x35\x00\x32\x00\x30\x00\x36\x00\x31\x00\x37'
+    
     return shell_code
 
 
@@ -85,13 +88,16 @@ try:
     # Add more space and get the original size
     original_size = add_more_space(path)
     number_of_sections = get_info_section(pe)
+    
+    # Get the last section
     last_section = pe.sections[-1]
-
+    print("Last section info: ", last_section)
+    
     # Get the image base and old entry points
     image_base = pe.OPTIONAL_HEADER.ImageBase
     entry_point_old = pe.OPTIONAL_HEADER.AddressOfEntryPoint
 
-    # Calc the last section and raw offset
+    # Calc the last section virtual offset and raw offset
     last_section_virtual_offset = last_section.VirtualAddress + \
         last_section.Misc_VirtualSize
     last_section_raw_offset = last_section.PointerToRawData + last_section.SizeOfRawData
@@ -119,15 +125,18 @@ try:
 
     shell_code = create_shell_code(
         virtual_address_of_caption, virtual_address_of_text, address_of_message_box_w)
-
+    
+    print("\nShell-code : ")
+    print(shell_code)
     pe.set_bytes_at_offset(raw_address_of_shell_code, shell_code)
 
+    # Resize VirtualSize and RawData
     pe.OPTIONAL_HEADER.AddressOfEntryPoint = entry_points_fix
     last_section.Misc_VirtualSize += 0x1000
     last_section.SizeOfRawData += 0x1000
     pe.OPTIONAL_HEADER.SizeOfImage += 0x1000
 
-    pe.write("C:\\Users\\ADmin\\Desktop\\TestPlace\\INJECTED.EXE")
+    pe.write("C:\\Users\\ADmin\\Desktop\\TestPlace\\Injected.exe")
     print("Inject Successfully!!")
 
 finally:
