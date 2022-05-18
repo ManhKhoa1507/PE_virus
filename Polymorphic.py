@@ -2,7 +2,7 @@ import re
 import random
 
 
-class SimplePol:
+class SimplePoly:
     """
     Polymorphic class
     """
@@ -13,8 +13,7 @@ class SimplePol:
         self.stack_register = None
         self.add_sub_register = None
         self.border_pos = None
-        self.all_registers_lst = ['rdx', 'rax', 'rcx', 'rsi', 'r11', 'rdi', 'rbx', 'r8', 'r10', 'r9', 'r12', 'r13',
-                                  'r14', 'r15', 'rbp', 'rsp']
+        self.all_registers_lst = ['edx', 'eax', 'ecx', 'esi', 'edi', 'ebx','ebp', 'esp']
         self.path = path
 
         # List of intrustions
@@ -370,7 +369,7 @@ class SimplePol:
             else:
                 self.swap_of_reg(self.cmp_lst[i])
 
-    def polymorph(self):
+    def polymorphic(self):
         """
         Make code polymorphous and write it to new asm file.
         :return:  None
@@ -399,6 +398,6 @@ class SimplePol:
 
 
 if __name__ == "__main__":
-    a = SimplePol("./src_asm/simple.asm")
-    a.polymorph()
+    a = SimplePoly("./src_asm/test.asm")
+    a.polymorphic()
     print(a.register_lst)
